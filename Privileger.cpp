@@ -93,6 +93,10 @@ DWORD InitMode4(wchar_t* cCompName, wchar_t* cPrivName) {
 	NTSTATUS ntStatus = LsaOpenPolicy(&lsastrComputer, &lsaOA, POLICY_VIEW_LOCAL_INFORMATION | POLICY_LOOKUP_NAMES, &hPolicy);
 	ULONG lErr = LsaNtStatusToWinError(ntStatus);
 	if (lErr != ERROR_SUCCESS) {
+		if (lErr == 1722) {
+			std::wcout << L"[-] LsaOpenPolicy() failed: " << lErr << " | Is computer alive?" << std::endl;
+			return 1;
+		} 
 		std::wcout << L"[-] LsaOpenPolicy() failed: " << lErr << std::endl;
 		return 1;
 	}
@@ -376,24 +380,15 @@ int wmain(int argc, wchar_t* argv[]) {
 		if (ValidateAccInfo(argv[2], argv[3]) == 0) {
 			dwRC = InitMode1(argv[2], argv[3]);
 		}
-		else {
-			std::wcout << L"[-] ValidateAccInfo() Failed" << std::endl;
-		}
 		break;
 	case '2':
 		if (ValidatePathInfo(argv[2], argv[3]) == 0) {
 			dwRC = InitMode2(argv[2], argv[3]);
 		}
-		else {
-			std::wcout << L"[-] ValidatePathInfo() Failed" << std::endl;
-		}
 		break;
 	case '3':
 		if (ValidateAccInfo(argv[2], argv[3]) == 0) {
 			dwRC = InitMode3(argv[2], argv[3]);
-		}
-		else {
-			std::wcout << L"[-] ValidateAccInfo() Failed" << std::endl;
 		}
 		break;
 	case '4':
