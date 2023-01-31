@@ -324,7 +324,7 @@ DWORD ValidateAccInfo(wchar_t* cAccName, wchar_t* cPrivName) {
 
 		// validating Privilege name
 		if (!ValidatePriv(cPrivName)) {
-			std::wcout << L"[-] ValidateAccInfo() success" << std::endl;
+			std::wcout << L"[-] ValidateAccInfo() failed" << std::endl;
 			return 1;
 		}
 		else {
