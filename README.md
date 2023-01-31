@@ -1,5 +1,8 @@
 # Privileger
 
+![logo](https://user-images.githubusercontent.com/92790655/215750071-a79364b8-9331-4552-9aac-bb1aa9214e02.png)
+
+
 ## RU
 Privilger позволяет вам максимально просто работать с привилегиями в ОС Windows. Присутствует три режима:
 1. Добавить привилегии аккаунту. Реализовано через взаимодействие с LSA посредством функции LSA `LsaAddAccountRights()`:
