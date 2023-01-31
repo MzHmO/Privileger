@@ -25,7 +25,7 @@ Privileger позволяет вам максимально просто раб�
 
 
 ## EN
-Privileger allows you to work with privileges in Windows as easily as possible. There are three modes:
+Privileger allows you to work with privileges in Windows as easily as possible. There are different modes:
 1. Add privileges to an account. Implemented through interaction with the LSA via the LSA function `LsaAddAccountRights()`:
 ![Adding privileges](https://user-images.githubusercontent.com/92790655/215747678-f17571bf-9748-47e1-9d81-e8c79b44adbd.png)
 
