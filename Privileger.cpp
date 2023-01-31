@@ -5,6 +5,7 @@ VOID ShowHelp() {
 	std::wcout << L"Usage: \n\n Mode 1 (Adding Privileges to account) \n\t Privileger.exe 1 <account name> <privilege> \n \tEx: Privileger.exe 1 Michael SeDebugPrivilege" << std::endl;
 	std::wcout << L"\n\n Mode 2 (Start process with privilege) \n\t Privileger.exe 2 <path to exe> <privilege> \n \tEx: Privileger.exe 2 C:\\Windows\\System32\\cmd.exe SeDebugPrivilege" << std::endl;
 	std::wcout << L"\n\n Mode 3 (Remove Privileges from account) \n\t Privileger.exe 3 <account name> <privilege> \n \tEx: Privileger.exe 3 Michael SeDebugPrivilege" << std::endl;
+	std::wcout << L"\n\n Mode 4 (Search account with privilege) \n\t Privileger.exe 4 <PC Name> <privilege> \n \tEx: Privileger.exe 4 HOME-PC SeDebugPrivilege" << std::endl;
 }
 
 VOID ShowAwesomeBanner() {
@@ -16,7 +17,7 @@ VOID ShowAwesomeBanner() {
  | |   | |  | |\ V /| | |  __/ (_| |  __/ |   
  |_|   |_|  |_| \_/ |_|_|\___|\__, |\___|_|   
                                __/ |          
-                              |___/           v 1.0)" << std::endl;
+                              |___/           v 1.1)" << std::endl;
 	std::wcout << L"\n\n\t\t\t https://github.com/MzHmO" << std::endl;
 }
 
@@ -71,7 +72,7 @@ DWORD InitMode2(wchar_t* cPath, wchar_t* cPrivName) {
 }
 
 DWORD InitMode3(wchar_t* cAccName, wchar_t* cPrivName) {
-	std::wcout << L"[+] Initializing mode 1 \n [+] Target Account: " << cAccName << "\n [+] Privilege: " << cPrivName << std::endl;
+	std::wcout << L"[+] Initializing mode 3 \n [+] Target Account: " << cAccName << "\n [+] Privilege: " << cPrivName << std::endl;
 	LSA_HANDLE hPolicy;
 	if (GetPolicy(&hPolicy) != 0) {
 		std::wcout << L" [-] GetPolicy() Error: " << std::endl;
@@ -81,11 +82,85 @@ DWORD InitMode3(wchar_t* cAccName, wchar_t* cPrivName) {
 	return 0;
 }
 
+DWORD InitMode4(wchar_t* cCompName, wchar_t* cPrivName) {
+	LSA_OBJECT_ATTRIBUTES lsaOA = { 0 };
+	LSA_UNICODE_STRING lsastrComputer = { 0 };
+	LSA_HANDLE hPolicy = NULL;
+	lsaOA.Length = sizeof(lsaOA);
+	lsastrComputer.Length = (USHORT)(lstrlen(cCompName) * sizeof(WCHAR));
+	lsastrComputer.MaximumLength = lsastrComputer.Length + sizeof(WCHAR);
+	lsastrComputer.Buffer = (PWSTR)cCompName;
+	NTSTATUS ntStatus = LsaOpenPolicy(&lsastrComputer, &lsaOA, POLICY_VIEW_LOCAL_INFORMATION | POLICY_LOOKUP_NAMES, &hPolicy);
+	ULONG lErr = LsaNtStatusToWinError(ntStatus);
+	if (lErr != ERROR_SUCCESS) {
+		std::wcout << L"[-] LsaOpenPolicy() failed: " << lErr << std::endl;
+		return 1;
+	}
+
+	LSA_UNICODE_STRING privilege = { 0 };
+	LSA_ENUMERATION_INFORMATION* array = { 0 };
+	ULONG count;
+	WCHAR accountName[256];
+	WCHAR domainName[256];
+	SID_NAME_USE snu;
+	DWORD domainLength = sizeof(domainName) / sizeof(WCHAR);
+	DWORD accountLength = sizeof(accountName) / sizeof(WCHAR);
+	BOOL fSuccess = FALSE;
+	LPTSTR StringSid = NULL;
+	privilege.Length = (USHORT)(lstrlen(cPrivName) * sizeof(WCHAR));
+	privilege.MaximumLength = privilege.Length + sizeof(WCHAR);
+	privilege.Buffer = cPrivName;
+	__try {
+		NTSTATUS ntstatus = LsaEnumerateAccountsWithUserRight(hPolicy, &privilege, (void**)&array, &count);
+		ULONG lErr = LsaNtStatusToWinError(ntstatus);
+		if (lErr != ERROR_SUCCESS) {
+			array = NULL;
+			if (lErr == 259) {
+				std::wcout << L" [-] No objects" << std::endl;
+			}
+			else {
+				std::wcout << L" [-] LsaEnumerateAccountsWithUserRight() failed: " << lErr << std::endl;
+			}
+			__leave;
+		}
+		std::wcout << L"[+] Objects with privileges: " << std::endl;
+		for (ULONG i = 0; i < count; i++) {
+			ConvertSidToStringSid(array[i].Sid, &StringSid);
+			LookupAccountSid(NULL, array[i].Sid, accountName, &accountLength, domainName, &domainLength, &snu);
+			switch (snu) {
+			case SidTypeUser:
+				printf(" [!] User: ");
+				wprintf(L"%s\\%s %s \n", domainName, accountName, StringSid);
+				break;
+			case SidTypeGroup:
+			case SidTypeWellKnownGroup:
+				printf(" [!] Group: ");
+				wprintf(L"%s\\%s %s\n", domainName, accountName, StringSid);
+				break;
+			case SidTypeAlias:
+				printf(" [!] Alias SID (may be local group): \t");
+				wprintf(L"%s\\%s %s\n", domainName, accountName, StringSid);
+				break;
+			default:
+				printf(" [!] Idk what is it: ");
+				wprintf(L"%s\\%s %s\n", domainName, accountName, StringSid);
+				break;
+			}
+		}
+		fSuccess = TRUE;
+	}
+	__finally {
+		LsaFreeMemory(array);
+	}
+
+	return 0;
+}
+
 // Prod Func
 
 DWORD AddUserPrivilege(LSA_HANDLE hPolicy, LPWSTR wUsername, LPWSTR wPrivName, BOOL bEnable) {
-	DWORD sid_size = 0;
 	PSID UserSid;
+	DWORD sid_size = 0;
 	LPTSTR wSidStr = NULL;
 	DWORD domain_size = 0;
 	SID_NAME_USE sid_use;
@@ -223,6 +298,18 @@ DWORD EnableTokenPrivilege(HANDLE hToken, LPTSTR szPriv, BOOL bEnabled) {
 	return 0;
 }
 
+BOOL ValidatePriv(wchar_t* cPrivName) {
+	LUID luid;
+	if (!LookupPrivilegeValue(NULL, cPrivName, &luid)) {
+		std::wcout << L"[-] Privilege " << cPrivName << L" may be incorrect" << std::endl;
+		return FALSE;
+	}
+	else {
+		std::wcout << L"[+] Privilege " << cPrivName << L" Found \n[+] Validation Success" << std::endl;
+		return TRUE;
+	}
+}
+
 DWORD ValidateAccInfo(wchar_t* cAccName, wchar_t* cPrivName) {
 	// validating username
 	DWORD sid_size = 0;
@@ -236,12 +323,12 @@ DWORD ValidateAccInfo(wchar_t* cAccName, wchar_t* cPrivName) {
 		std::wcout << L"[+] User " << cAccName << L" found" << std::endl;
 
 		// validating Privilege name
-		LUID luid;
-		if (!LookupPrivilegeValue(NULL, cPrivName, &luid)) {
-			std::wcout << L"[-] Privilege " << cPrivName << L" may be incorrect" << std::endl;
+		if (!ValidatePriv(cPrivName)) {
+			std::wcout << L"[-] ValidateAccInfo() success" << std::endl;
+			return 1;
 		}
 		else {
-			std::wcout << L"[+] Privilege " << cPrivName << L" Found \n[+] Validation Success" << std::endl;
+			std::wcout << L"[+] ValidateAccInfo() success" << std::endl;
 			return 0;
 		}
 	}
@@ -256,13 +343,12 @@ DWORD ValidatePathInfo(wchar_t* Path, wchar_t* cPrivName) {
 	BOOL bPathEx = PathFileExistsW(Path);
 	if (bPathEx) {
 		std::wcout << L"[+] " << Path << L" Found" << std::endl;
-		LUID luid;
-		if (!LookupPrivilegeValue(NULL, cPrivName, &luid)) {
-			std::wcout << L"[-] Privilege " << cPrivName << L" may be incorrect" << std::endl;
+		if (!ValidatePriv(cPrivName)) {
+			std::wcout << L"[-] ValidatePathInfo() success" << std::endl;
 			return 1;
 		}
 		else {
-			std::wcout << L"[+] Privilege " << cPrivName << L" Found \n[+] Validation Success" << std::endl;
+			std::wcout << L"[+] ValidatePathInfo() success" << std::endl;
 			return 0;
 		}
 		return 0;
@@ -308,6 +394,14 @@ int wmain(int argc, wchar_t* argv[]) {
 		}
 		else {
 			std::wcout << L"[-] ValidateAccInfo() Failed" << std::endl;
+		}
+		break;
+	case '4':
+		if (ValidatePriv(argv[3])) {
+			dwRC = InitMode4(argv[2], argv[3]);
+		}
+		else {
+			std::wcout << L"[-] ValidatePriv() Failed" << std::endl;
 		}
 		break;
 	default:

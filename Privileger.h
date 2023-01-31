@@ -12,6 +12,7 @@ VOID ShowAwesomeBanner();
 DWORD InitMode1(wchar_t* cAccName, wchar_t* cPrivName);
 DWORD InitMode2(wchar_t* cPath, wchar_t* cPrivName);
 DWORD InitMode3(wchar_t* cAccName, wchar_t* cPrivName);
+DWORD InitMode4(wchar_t* cCompName, wchar_t* cPrivName);
 
 DWORD AddUserPrivilege(LSA_HANDLE hPolicy, LPWSTR wUsername, LPWSTR wPrivName, BOOL bEnable);
 DWORD GetPolicy(PLSA_HANDLE LsaHandle);
