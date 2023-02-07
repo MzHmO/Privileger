@@ -6,6 +6,7 @@ VOID ShowHelp() {
 	std::wcout << L"\n\n Mode 2 (Start process with privilege) \n\t Privileger.exe 2 <path to exe> <privilege> \n \tEx: Privileger.exe 2 C:\\Windows\\System32\\cmd.exe SeDebugPrivilege" << std::endl;
 	std::wcout << L"\n\n Mode 3 (Remove Privileges from account) \n\t Privileger.exe 3 <account name> <privilege> \n \tEx: Privileger.exe 3 Michael SeDebugPrivilege" << std::endl;
 	std::wcout << L"\n\n Mode 4 (Search account with privilege) \n\t Privileger.exe 4 <PC Name> <privilege> \n \tEx: Privileger.exe 4 HOME-PC SeDebugPrivilege" << std::endl;
+	std::wcout << L"\n\n Mode 5 (Search privileges assigned to account) \n\t Privileger.exe 5 <PC Name> <username> \n \tEx: Privileger.exe 5 HOME-PC Michael" << std::endl;
 }
 
 VOID ShowAwesomeBanner() {
@@ -17,7 +18,7 @@ VOID ShowAwesomeBanner() {
  | |   | |  | |\ V /| | |  __/ (_| |  __/ |   
  |_|   |_|  |_| \_/ |_|_|\___|\__, |\___|_|   
                                __/ |          
-                              |___/           v 1.1)" << std::endl;
+                              |___/           v 1.2)" << std::endl;
 	std::wcout << L"\n\n\t\t\t https://github.com/MzHmO" << std::endl;
 }
 
@@ -158,6 +159,49 @@ DWORD InitMode4(wchar_t* cCompName, wchar_t* cPrivName) {
 	}
 
 	return 0;
+}
+
+DWORD InitMode5(wchar_t* cCompName, wchar_t* cUsername) {
+	LSA_HANDLE hPolicy;
+	LSA_OBJECT_ATTRIBUTES lsaOA = { 0 };
+	LSA_UNICODE_STRING lsastrComputer = { 0 };
+	lsaOA.Length = sizeof(lsaOA);
+	lsastrComputer.Length = (USHORT)(lstrlen(cCompName) * sizeof(WCHAR));
+	lsastrComputer.MaximumLength = lsastrComputer.Length + sizeof(WCHAR);
+	lsastrComputer.Buffer = (PWSTR)cCompName;
+	NTSTATUS ntStatus = LsaOpenPolicy(&lsastrComputer, &lsaOA, POLICY_VIEW_LOCAL_INFORMATION | POLICY_LOOKUP_NAMES, &hPolicy);
+	ULONG lErr = LsaNtStatusToWinError(ntStatus);
+	if (lErr != ERROR_SUCCESS) {
+		if (lErr == 1722) {
+			std::wcout << L"[-] LsaOpenPolicy() failed: " << lErr << " | Is computer alive?" << std::endl;
+			return 1;
+		} 
+		std::wcout << L"[-] LsaOpenPolicy() failed: " << lErr << std::endl;
+		return 1;
+	}
+	
+	PSID UserSid;
+	DWORD sid_size = 0;
+	LPTSTR wSidStr = NULL;
+	DWORD domain_size = 0;
+	SID_NAME_USE sid_use;
+	if (!LookupAccountName(NULL, cUsername, NULL, &sid_size, NULL, &domain_size, &sid_use)) {
+		UserSid = (PSID)VirtualAlloc(NULL, sid_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+		LPTSTR domain = NULL;
+		domain = (LPTSTR)VirtualAlloc(NULL, domain_size * sizeof(WCHAR), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+		LookupAccountName(NULL, cUsername, UserSid, &sid_size, domain, &domain_size, &sid_use);
+		VirtualFree(domain, 0, MEM_RELEASE);
+		ConvertSidToStringSid(UserSid, &wSidStr);
+		std::wcout << L" [+] User SID: " << wSidStr << std::endl;
+		PrintTrusteePrivs(hPolicy, UserSid);
+		VirtualFree(UserSid, 0, MEM_RELEASE);
+		return 0;
+	} else {
+		std::wcout << L" [-] LookupAccountName() Error: " << GetLastError() << std::endl;
+		return 1;
+	}
+
+	return 1;
 }
 
 // Prod Func
@@ -397,6 +441,14 @@ int wmain(int argc, wchar_t* argv[]) {
 		}
 		else {
 			std::wcout << L"[-] ValidatePriv() Failed" << std::endl;
+		}
+		break;
+	case '5':
+		std::wcout << L"[!] I'm not able to validate username and PC name. Make sure you enter the correct data." << std::endl;
+		Sleep(500);
+		std::wcout << L"[!] Starting" << std::endl;
+		if (InitMode5(argv[2], argv[3]) != 0) {
+			std::wcout << L"[-] InitMode 5 Error" << std::endl;
 		}
 		break;
 	default:
