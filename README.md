@@ -1,6 +1,6 @@
 # Privileger
 
-![logo](https://user-images.githubusercontent.com/92790655/215765151-862ca68e-1e8e-4e72-b685-54fb2166a768.png)
+![logo](https://user-images.githubusercontent.com/92790655/217177313-0c408d86-d3c6-4848-ba43-829db100cf97.png)
 
 
 ## RU
@@ -23,6 +23,10 @@ Privileger позволяет вам максимально просто раб�
 
 ![Нахождение объектов](https://user-images.githubusercontent.com/92790655/215765385-2d3c51cd-d1bc-4451-8c40-b1682e684191.png)
 
+5. С помощью данного режима вы сможете перечислить все привилегии, которые назначены конкретному аккаунту. Реализовано через `LsaEnumerateAccountRights()`:
+
+![Получение привилегий](https://user-images.githubusercontent.com/92790655/217177873-85d98b9e-0bfc-43f4-be87-c8db538f41d6.png)
+
 
 ## EN
 Privileger allows you to work with privileges in Windows as easily as possible. There are different modes:
@@ -42,3 +46,7 @@ Privileger allows you to work with privileges in Windows as easily as possible. 
 4. Search mode. Allows to detect objects with some privileges on a particular computer. This is done through `LsaEnumerateAccountsWithUserRight()`:
 
 ![Finding objects](https://user-images.githubusercontent.com/92790655/215765385-2d3c51cd-d1bc-4451-8c40-b1682e684191.png)
+
+5. With this mode you can list all the privileges that are assigned to a particular account. Implemented through `LsaEnumerateAccountRights()`:
+
+![Privilege Enumeration](https://user-images.githubusercontent.com/92790655/217177873-85d98b9e-0bfc-43f4-be87-c8db538f41d6.png)
